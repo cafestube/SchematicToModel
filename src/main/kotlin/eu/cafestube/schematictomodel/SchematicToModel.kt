@@ -40,7 +40,8 @@ fun main(args: Array<String>) {
     val modelOutputPath = cmd.getParsedOptionValue<Path>(output)
 
     val schematic = SchematicIO.parseSchematic(inputPath.toFile())
-    val model = schematic.toModel()
+    val modelRenderer = ModelRenderer(schematic, ClientResources())
+    val model = modelRenderer.buildModel()
 
     FileOutputStream(modelOutputPath.toFile()).use { outputStream ->
         ModelSerializer.INSTANCE.serialize(model, outputStream)
