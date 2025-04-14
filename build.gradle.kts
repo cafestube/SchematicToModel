@@ -26,7 +26,7 @@ dependencies {
 
 tasks.jar {
     manifest {
-        attributes.put("Main-Class", "eu.cafestube.sprouts.tooling.island.splitter.IslandSplitterKt")
+        attributes.put("Main-Class", "eu.cafestube.schematictomodel.SchematicToModelKt")
     }
 }
 

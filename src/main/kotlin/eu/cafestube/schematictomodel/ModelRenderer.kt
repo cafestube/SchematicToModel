@@ -20,6 +20,8 @@ import team.unnamed.creative.texture.TextureUV
 import java.io.ByteArrayInputStream
 import kotlin.collections.mutableMapOf
 
+const val SCALE = 1.0F / 16.0F
+
 class ModelRenderer(val schematic: Schematic, val clientResources: ClientResources) {
 
     private val textures = mutableMapOf<String, Pair<Int, ModelTexture>>()
@@ -37,6 +39,16 @@ class ModelRenderer(val schematic: Schematic, val clientResources: ClientResourc
 
     fun getOrAddTexture(model: Model, reference: String): Int {
         val texture = model.textures().variables()[reference] ?: error("Texture $reference not found in model")
+
+        if(texture.key() != null) {
+            return getOrAddTexture(texture.key()!!)
+        }
+
+        return getOrAddTexture(model, texture.reference()!!)
+    }
+
+    fun getOrAddTexture(model: ModelTextures, reference: String): Int {
+        val texture = model.variables()[reference] ?: error("Texture $reference not found in model")
 
         if(texture.key() != null) {
             return getOrAddTexture(texture.key()!!)
@@ -75,9 +87,25 @@ class ModelRenderer(val schematic: Schematic, val clientResources: ClientResourc
                             val model = findModel(variant) ?: return@forEach
                             val fullModel = createFullModel(model)
 
-                            //TODO: handle uvlock
+                            if(fullModel.elements().isEmpty()) {
+                                if(fullModel.key() == Key.key("minecraft", "models/block/banner.json")) {
+                                    if(blockState.properties.contains("facing")) {
+                                        elements.addAll(renderWallBanner(blockState.properties["facing"] ?: "north", x, y, z))
+                                    } else {
+                                        elements.addAll(renderBanner(blockState.properties["rotation"]?.toInt() ?: 0, x, y, z))
+                                    }
+                                } else if(fullModel.key() == Key.key("minecraft", "models/block/bed.json")) {
+                                    val color = Key.key(blockState.identifier).value().replace("_bed", "")
+                                    val texture = Key.key("minecraft", "entity/bed/$color")
 
-                            elements.addAll(fullModel.elements().map { it.transformElement(fullModel, 1.0F / 16.0F, x.toFloat(), y.toFloat(), z.toFloat(), variant.x(), variant.y()) })
+                                    elements.addAll(renderBed(texture, x, y, z, blockState.properties["part"] == "foot", blockState.properties["facing"] ?: "north"))
+                                } else {
+                                    println("No elements found for $blockId ${fullModel.key()}")
+                                }
+                            } else {
+                                //TODO: handle uvlock
+                                elements.addAll(fullModel.elements().map { it.transformElement(fullModel.textures(), SCALE, x.toFloat(), y.toFloat(), z.toFloat(), variant.x(), variant.y()) })
+                            }
                         }
                     } else {
                         println("No variant found for $blockId")
@@ -95,6 +123,45 @@ class ModelRenderer(val schematic: Schematic, val clientResources: ClientResourc
                     .build()
             )
             .build()
+    }
+
+    private fun renderBed(texture: Key, x: Int, y: Int, z: Int, isFoot: Boolean, facing: String): Collection<Element> {
+        val bed = getExtraModel("bed_${if(isFoot) "foot" else "head"}")
+        val yRot = yRotFromFacing(facing)
+
+        val textures = ModelTextures.builder()
+            .addVariable("bed", ModelTexture.ofKey(texture))
+            .build()
+
+        return bed.elements()
+            .map {
+                it.transformElement(textures, SCALE, x.toFloat(), y.toFloat(), z.toFloat(), 0, yRot)
+            }
+    }
+
+    private fun renderBanner(rotation: Int, x: Int, y: Int, z: Int): Collection<Element> {
+        return TODO("Normal banners are not supported yet")
+    }
+
+    private fun yRotFromFacing(facing: String): Int {
+        return when (facing) {
+            "north" -> 0
+            "east" -> 90
+            "south" -> 180
+            "west" -> 270
+            else -> error("Invalid facing $facing")
+        }
+    }
+
+    private fun renderWallBanner(facing: String, x: Int, y: Int, z: Int): Collection<Element> {
+        val wallBanner = getExtraModel("wall_banner")
+
+        val yRot = yRotFromFacing(facing)
+
+        return wallBanner.elements()
+            .map {
+                it.transformElement(wallBanner.textures(), SCALE, x.toFloat(), y.toFloat(), z.toFloat(), 0, yRot)
+            }
     }
 
     private fun createFullModel(model: Model): Model {
@@ -126,6 +193,12 @@ class ModelRenderer(val schematic: Schematic, val clientResources: ClientResourc
             .build()
 
         return newModel
+    }
+
+    private fun getExtraModel(id: String): Model {
+        return ModelRenderer::class.java.getResource("/extra_model/$id.json")?.let {
+            ModelSerializer.INSTANCE.deserialize(it.openStream(), Key.key("extra_models/$id.json"))
+        } ?: error("Could not find extra model $id")
     }
 
     private fun findModel(variant: Variant): Model? {
@@ -177,17 +250,12 @@ class ModelRenderer(val schematic: Schematic, val clientResources: ClientResourc
         } else if(condition is Condition.Or) {
             return condition.conditions().any { applies(it, state) }
         } else if(condition is Condition.Match) {
-            println(condition.key() + " = " + condition.value() + " " + state.properties[condition.key()])
             return state.properties[condition.key()] == if(condition.value() is String) condition.value() else condition.value().toString()
         }
         throw IllegalArgumentException("Unknown condition type: ${condition.javaClass}")
     }
 
-    private fun Element.transformElement(model: Model, scale: Float, moveX: Float, moveY: Float, moveZ: Float, rotX: Int, rotY: Int): Element {
-
-
-
-
+    private fun Element.transformElement(textures: ModelTextures, scale: Float, moveX: Float, moveY: Float, moveZ: Float, rotX: Int, rotY: Int): Element {
         var newFrom: Vector3Float = from().multiply(scale).add(moveX, moveY, moveZ)
         var newTo: Vector3Float = to().multiply(scale).add(moveX, moveY, moveZ)
 
@@ -216,7 +284,7 @@ class ModelRenderer(val schematic: Schematic, val clientResources: ClientResourc
             .faces(faces().map { (key, it) ->
 
                 return@map rotate90(key, rotX, rotY) to ElementFace.face()
-                    .texture("#" + getOrAddTexture(model, it.texture().removePrefix("#")))
+                    .texture("#" + getOrAddTexture(textures, it.texture().removePrefix("#")))
                     .uv(it.uv0() ?: TextureUV.uv(0.0F, 0.0F, 1.0F, 1.0F))
                     .cullFace(it.cullFace())
                     .rotation(it.rotation())
@@ -229,7 +297,7 @@ class ModelRenderer(val schematic: Schematic, val clientResources: ClientResourc
             .to(to)
             .shade(shade())
 
-            .rotation(rotation()?.let { ElementRotation.of(rotation().origin()?.add(moveX, moveY, moveZ), rotation().axis(), rotation().angle(), rotation().rescale()) })
+            .rotation(rotation()?.let { ElementRotation.of(rotation().origin()?.multiply(scale)?.add(moveX, moveY, moveZ), rotation().axis(), rotation().angle(), rotation().rescale()) })
             .build()
 
     }
