@@ -75,6 +75,8 @@ class ModelRenderer(val schematic: Schematic, val clientResources: ClientResourc
                             val model = findModel(variant) ?: return@forEach
                             val fullModel = createFullModel(model)
 
+                            //TODO: handle uvlock
+
                             elements.addAll(fullModel.elements().map { it.transformElement(fullModel, 1.0F / 16.0F, x.toFloat(), y.toFloat(), z.toFloat(), variant.x(), variant.y()) })
                         }
                     } else {
@@ -143,8 +145,8 @@ class ModelRenderer(val schematic: Schematic, val clientResources: ClientResourc
             return rpState.multipart().filter { applies(it.condition(), blockState) }.map { it.variant() }
         }
 
-        val variant = rpState.variants()[blockState.properties.map { it.key + "=" + it.value }.joinToString(",")]
-            ?: rpState.variants()[""]
+        val mappedVariants = rpState.variants().mapKeys { parseBlockStateProperties(it.key) }
+        val variant = firstMatching(mappedVariants, blockState.properties) ?: rpState.variants()[""]
 
         if (variant == null) {
             println("No variant found for ${blockState.identifier} with properties ${blockState.properties}")
@@ -152,6 +154,19 @@ class ModelRenderer(val schematic: Schematic, val clientResources: ClientResourc
         }
 
         return listOf(variant)
+    }
+
+    fun firstMatching(mappedVariants: Map<Map<String, String>, MultiVariant>, input: Map<String, String>): MultiVariant? {
+        for (entry in mappedVariants.entries) {
+            val properties = entry.key
+            val variant = entry.value
+
+            if (properties.all { input[it.key] == it.value }) {
+                return variant
+            }
+        }
+
+        return null
     }
 
     private fun applies(condition: Condition, state: BlockState): Boolean {
@@ -196,6 +211,7 @@ class ModelRenderer(val schematic: Schematic, val clientResources: ClientResourc
             if(newTo.z() > newFrom.z()) newTo.z() else newFrom.z()
         )
 
+        @Suppress("UNNECESSARY_SAFE_CALL") //Even tho rotation is annotated as not-null, rotation can be null
         return Element.element()
             .faces(faces().map { (key, it) ->
 
@@ -212,6 +228,7 @@ class ModelRenderer(val schematic: Schematic, val clientResources: ClientResourc
             .from(from)
             .to(to)
             .shade(shade())
+
             .rotation(rotation()?.let { ElementRotation.of(rotation().origin()?.add(moveX, moveY, moveZ), rotation().axis(), rotation().angle(), rotation().rescale()) })
             .build()
 
