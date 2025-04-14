@@ -1,13 +1,8 @@
 package eu.cafestube.schematictomodel
 
 import eu.cafestube.schematics.SchematicIO
-import org.apache.commons.cli.CommandLine
-import org.apache.commons.cli.Converter
-import org.apache.commons.cli.DefaultParser
-import org.apache.commons.cli.HelpFormatter
-import org.apache.commons.cli.Option
-import org.apache.commons.cli.Options
-import team.unnamed.creative.serialize.ResourcePackWriter
+import org.apache.commons.cli.*
+import team.unnamed.creative.serialize.minecraft.item.ItemSerializer
 import team.unnamed.creative.serialize.minecraft.model.ModelSerializer
 import java.io.FileOutputStream
 import java.nio.file.Path
@@ -23,9 +18,14 @@ fun main(args: Array<String>) {
     val output = Option.builder("o").argName("output")
         .longOpt("output").hasArg().type(Path::class.java).converter(Converter.PATH).required()
         .desc("The model output").build()
+    val itemOutput = Option.builder("io").argName("item-output")
+        .longOpt("item-output").hasArg().type(Path::class.java).converter(Converter.PATH).required()
+        .desc("The item-model output").build()
+
 
     options.addOption(input)
     options.addOption(output)
+    options.addOption(itemOutput)
 
     val cmd: CommandLine = try {
         DefaultParser().parse(options, args)
@@ -44,6 +44,12 @@ fun main(args: Array<String>) {
     val model = modelRenderer.buildModel()
 
     FileOutputStream(modelOutputPath.toFile()).use { outputStream ->
-        ModelSerializer.INSTANCE.serialize(model, outputStream)
+        ModelSerializer.INSTANCE.serialize(model, outputStream, 71)
+    }
+
+    val itemModelOutputPath = cmd.getParsedOptionValue<Path>(itemOutput)
+    val itemModel = modelRenderer.buildItemModelDef()
+    FileOutputStream(itemModelOutputPath.toFile()).use { outputStream ->
+        ItemSerializer.INSTANCE.serialize(itemModel, outputStream, 71)
     }
 }

@@ -7,6 +7,9 @@ import team.unnamed.creative.base.Vector3Float
 import team.unnamed.creative.blockstate.Condition
 import team.unnamed.creative.blockstate.MultiVariant
 import team.unnamed.creative.blockstate.Variant
+import team.unnamed.creative.item.Item
+import team.unnamed.creative.item.ItemModel
+import team.unnamed.creative.item.tint.TintSource
 import team.unnamed.creative.blockstate.BlockState as RPBlockState
 import team.unnamed.creative.model.Element
 import team.unnamed.creative.model.ElementFace
@@ -17,15 +20,49 @@ import team.unnamed.creative.model.ModelTextures
 import team.unnamed.creative.serialize.minecraft.blockstate.BlockStateSerializer
 import team.unnamed.creative.serialize.minecraft.model.ModelSerializer
 import team.unnamed.creative.texture.TextureUV
+import java.awt.Color
 import java.io.ByteArrayInputStream
 import kotlin.collections.mutableMapOf
 
 const val SCALE = 1.0F / 16.0F
 
+val grassColored = listOf<String>(
+    "minecraft:grass_block",
+    "minecraft:fern",
+    "minecraft:short_grass",
+    "minecraft:potted_fern",
+    "minecraft:bush"
+)
+
+val grassColoredByTextureId = mapOf(
+    "minecraft:pink_petals" to 0,
+    "minecraft:wildflowers" to 0
+)
+
+val foliageColored = listOf(
+    "minecraft:oak_leaves",
+    "minecraft:jungle_leaves",
+    "minecraft:acacia_leaves",
+    "minecraft:dark_oak_leaves",
+    "minecraft:vine",
+    "minecraft:mangrove_leaves"
+)
+
 class ModelRenderer(val schematic: Schematic, val clientResources: ClientResources) {
 
     private val textures = mutableMapOf<String, Pair<Int, ModelTexture>>()
     private var textureId = 0
+    private val tints = mutableMapOf<TintSource, Int>()
+
+    fun getOrCreateTintIndex(color: TintSource): Int {
+        if (tints.containsKey(color)) {
+            return tints[color]!!
+        }
+
+        val index = tints.size
+        tints[color] = index
+        return index
+    }
 
     fun getOrAddTexture(key: Key): Int {
         if (textures.containsKey(key.value())) {
@@ -90,7 +127,9 @@ class ModelRenderer(val schematic: Schematic, val clientResources: ClientResourc
                             if(fullModel.elements().isEmpty()) {
                                 if(fullModel.key() == Key.key("minecraft", "models/block/banner.json")) {
                                     if(blockState.properties.contains("facing")) {
-                                        elements.addAll(renderWallBanner(blockState.properties["facing"] ?: "north", x, y, z))
+
+                                        val dyeColor = DyeColor.valueOf(blockState.identifier.replace("minecraft:", "").replace("_wall_banner", "").uppercase())
+                                        elements.addAll(renderWallBanner(dyeColor, blockState.properties["facing"] ?: "north", x, y, z))
                                     } else {
                                         elements.addAll(renderBanner(blockState.properties["rotation"]?.toInt() ?: 0, x, y, z))
                                     }
@@ -104,7 +143,14 @@ class ModelRenderer(val schematic: Schematic, val clientResources: ClientResourc
                                 }
                             } else {
                                 //TODO: handle uvlock
-                                elements.addAll(fullModel.elements().map { it.transformElement(fullModel.textures(), SCALE, x.toFloat(), y.toFloat(), z.toFloat(), variant.x(), variant.y()) })
+
+                                val tint = if(grassColored.contains(blockState.identifier)) {
+                                    TintSource.grass(0.8F, 0.4F) //Plains
+                                } else null
+
+                                elements.addAll(fullModel.elements().map {
+                                    it.transformElement(fullModel.textures(), SCALE, x.toFloat(), y.toFloat(), z.toFloat(), variant.x(), variant.y(), tint)
+                                })
                             }
                         }
                     } else {
@@ -153,14 +199,14 @@ class ModelRenderer(val schematic: Schematic, val clientResources: ClientResourc
         }
     }
 
-    private fun renderWallBanner(facing: String, x: Int, y: Int, z: Int): Collection<Element> {
+    private fun renderWallBanner(dyeColor: DyeColor, facing: String, x: Int, y: Int, z: Int): Collection<Element> {
         val wallBanner = getExtraModel("wall_banner")
-
         val yRot = yRotFromFacing(facing)
 
         return wallBanner.elements()
-            .map {
-                it.transformElement(wallBanner.textures(), SCALE, x.toFloat(), y.toFloat(), z.toFloat(), 0, yRot)
+            .mapIndexed { index, it ->
+                val tint = if(index == 1) TintSource.constant(dyeColor.rgb) else null
+                it.transformElement(wallBanner.textures(), SCALE, x.toFloat(), y.toFloat(), z.toFloat(), 0, yRot, tint)
             }
     }
 
@@ -193,6 +239,11 @@ class ModelRenderer(val schematic: Schematic, val clientResources: ClientResourc
             .build()
 
         return newModel
+    }
+
+    fun buildItemModelDef(): Item {
+
+        return Item.item(Key.key("gen"), ItemModel.reference(Key.key("gen"), this.tints.entries.sortedBy { it.value }.map { it.key }))
     }
 
     private fun getExtraModel(id: String): Model {
@@ -255,7 +306,7 @@ class ModelRenderer(val schematic: Schematic, val clientResources: ClientResourc
         throw IllegalArgumentException("Unknown condition type: ${condition.javaClass}")
     }
 
-    private fun Element.transformElement(textures: ModelTextures, scale: Float, moveX: Float, moveY: Float, moveZ: Float, rotX: Int, rotY: Int): Element {
+    private fun Element.transformElement(textures: ModelTextures, scale: Float, moveX: Float, moveY: Float, moveZ: Float, rotX: Int, rotY: Int, colorTint: TintSource? = null): Element {
         var newFrom: Vector3Float = from().multiply(scale).add(moveX, moveY, moveZ)
         var newTo: Vector3Float = to().multiply(scale).add(moveX, moveY, moveZ)
 
@@ -279,6 +330,8 @@ class ModelRenderer(val schematic: Schematic, val clientResources: ClientResourc
             if(newTo.z() > newFrom.z()) newTo.z() else newFrom.z()
         )
 
+        val tintIndex = colorTint?.let { getOrCreateTintIndex(colorTint) }
+
         @Suppress("UNNECESSARY_SAFE_CALL") //Even tho rotation is annotated as not-null, rotation can be null
         return Element.element()
             .faces(faces().map { (key, it) ->
@@ -288,6 +341,7 @@ class ModelRenderer(val schematic: Schematic, val clientResources: ClientResourc
                     .uv(it.uv0() ?: TextureUV.uv(0.0F, 0.0F, 1.0F, 1.0F))
                     .cullFace(it.cullFace())
                     .rotation(it.rotation())
+                    .tintIndex(tintIndex ?: it.tintIndex())
                     .build()
 
             }.toMap())
@@ -296,7 +350,6 @@ class ModelRenderer(val schematic: Schematic, val clientResources: ClientResourc
             .from(from)
             .to(to)
             .shade(shade())
-
             .rotation(rotation()?.let { ElementRotation.of(rotation().origin()?.multiply(scale)?.add(moveX, moveY, moveZ), rotation().axis(), rotation().angle(), rotation().rescale()) })
             .build()
 

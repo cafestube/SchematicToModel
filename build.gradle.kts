@@ -12,6 +12,9 @@ repositories {
         name = "cafestubeRepository"
         url = uri("https://repo.cafestu.be/repository/maven-public-snapshots/")
     }
+    maven {
+        url = uri("https://s01.oss.sonatype.org/content/repositories/snapshots/")
+    }
 }
 
 dependencies {
@@ -19,8 +22,8 @@ dependencies {
     implementation("eu.cafestube:WetSchematics:2.0.8-SNAPSHOT")
     implementation("commons-cli:commons-cli:1.9.0")
 
-    implementation("team.unnamed:creative-api:1.7.3")
-    implementation("team.unnamed:creative-serializer-minecraft:1.7.3")
+    implementation("team.unnamed:creative-api:1.8.2-SNAPSHOT")
+    implementation("team.unnamed:creative-serializer-minecraft:1.8.2-SNAPSHOT")
     implementation("net.kyori:adventure-nbt:4.20.0")
 }
 
