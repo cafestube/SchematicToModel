@@ -21,11 +21,14 @@ fun main(args: Array<String>) {
     val itemOutput = Option.builder("io").argName("item-output")
         .longOpt("item-output").hasArg().type(Path::class.java).converter(Converter.PATH).required()
         .desc("The item-model output").build()
-
+    val scale = Option.builder("s").argName("scale")
+        .longOpt("scale").hasArg().type(Float::class.java).converter(Converter.NUMBER).required(false)
+        .desc("scaling factor (default: 1.0F)").build()
 
     options.addOption(input)
     options.addOption(output)
     options.addOption(itemOutput)
+    options.addOption(scale)
 
     val cmd: CommandLine = try {
         DefaultParser().parse(options, args)
@@ -40,7 +43,10 @@ fun main(args: Array<String>) {
     val modelOutputPath = cmd.getParsedOptionValue<Path>(output)
 
     val schematic = SchematicIO.parseSchematic(inputPath.toFile())
-    val modelRenderer = ModelRenderer(schematic, ClientResources())
+
+    val scaleValue = cmd.getParsedOptionValue<Number>(scale)?.toFloat() ?: 1.0F
+    println("Using scale $scaleValue")
+    val modelRenderer = ModelRenderer(schematic, ClientResources(), scaleValue)
     val model = modelRenderer.buildModel()
 
     FileOutputStream(modelOutputPath.toFile()).use { outputStream ->

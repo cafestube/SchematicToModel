@@ -20,7 +20,6 @@ import team.unnamed.creative.model.ModelTextures
 import team.unnamed.creative.serialize.minecraft.blockstate.BlockStateSerializer
 import team.unnamed.creative.serialize.minecraft.model.ModelSerializer
 import team.unnamed.creative.texture.TextureUV
-import java.awt.Color
 import java.io.ByteArrayInputStream
 import kotlin.collections.mutableMapOf
 
@@ -48,7 +47,7 @@ val foliageColored = listOf(
     "minecraft:mangrove_leaves"
 )
 
-class ModelRenderer(val schematic: Schematic, val clientResources: ClientResources) {
+class ModelRenderer(val schematic: Schematic, val clientResources: ClientResources, val modelScale: Float) {
 
     private val textures = mutableMapOf<String, Pair<Int, ModelTexture>>()
     private var textureId = 0
@@ -322,13 +321,13 @@ class ModelRenderer(val schematic: Schematic, val clientResources: ClientResourc
             if(newTo.x() < newFrom.x()) newTo.x() else newFrom.x(),
             if(newTo.y() < newFrom.y()) newTo.y() else newFrom.y(),
             if(newTo.z() < newFrom.z()) newTo.z() else newFrom.z()
-        )
+        ).multiply(this@ModelRenderer.modelScale)
 
         val to = Vector3Float(
             if(newTo.x() > newFrom.x()) newTo.x() else newFrom.x(),
             if(newTo.y() > newFrom.y()) newTo.y() else newFrom.y(),
             if(newTo.z() > newFrom.z()) newTo.z() else newFrom.z()
-        )
+        ).multiply(this@ModelRenderer.modelScale)
 
         val tintIndex = colorTint?.let { getOrCreateTintIndex(colorTint) }
 
