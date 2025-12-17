@@ -24,7 +24,7 @@ dependencies {
 
     implementation("team.unnamed:creative-api:1.8.2-SNAPSHOT")
     implementation("team.unnamed:creative-serializer-minecraft:1.8.2-SNAPSHOT")
-    implementation("net.kyori:adventure-nbt:4.20.0")
+    implementation("net.kyori:adventure-nbt:4.26.1")
 }
 
 tasks.jar {
