@@ -10,7 +10,7 @@ repositories {
     mavenCentral()
     maven {
         name = "cafestubeRepository"
-        url = uri("https://repo.cafestu.be/repository/maven-public-snapshots/")
+        url = uri("https://repo.cafestube.net/repository/maven-public-snapshots/")
     }
     maven {
         url = uri("https://s01.oss.sonatype.org/content/repositories/snapshots/")
