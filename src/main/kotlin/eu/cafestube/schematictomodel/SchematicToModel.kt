@@ -2,6 +2,8 @@ package eu.cafestube.schematictomodel
 
 import eu.cafestube.schematics.SchematicIO
 import org.apache.commons.cli.*
+import team.unnamed.creative.metadata.pack.FormatVersion
+import team.unnamed.creative.metadata.pack.PackFormat
 import team.unnamed.creative.serialize.minecraft.item.ItemSerializer
 import team.unnamed.creative.serialize.minecraft.model.ModelSerializer
 import java.io.FileOutputStream
@@ -50,12 +52,12 @@ fun main(args: Array<String>) {
     val model = modelRenderer.buildModel()
 
     FileOutputStream(modelOutputPath.toFile()).use { outputStream ->
-        ModelSerializer.INSTANCE.serialize(model, outputStream, 71)
+        ModelSerializer.INSTANCE.serialize(model, outputStream, PackFormat.format(FormatVersion.of(FormatVersion.FORMAT_26_2)))
     }
 
     val itemModelOutputPath = cmd.getParsedOptionValue<Path>(itemOutput)
     val itemModel = modelRenderer.buildItemModelDef()
     FileOutputStream(itemModelOutputPath.toFile()).use { outputStream ->
-        ItemSerializer.INSTANCE.serialize(itemModel, outputStream, 71)
+        ItemSerializer.INSTANCE.serialize(itemModel, outputStream, PackFormat.format(FormatVersion.of(FormatVersion.FORMAT_26_2)))
     }
 }

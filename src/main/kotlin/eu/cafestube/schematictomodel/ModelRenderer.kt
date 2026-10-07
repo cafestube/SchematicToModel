@@ -337,7 +337,7 @@ class ModelRenderer(val schematic: Schematic, val clientResources: ClientResourc
 
                 return@map rotate90(key, rotX, rotY) to ElementFace.face()
                     .texture("#" + getOrAddTexture(textures, it.texture().removePrefix("#")))
-                    .uv(it.uv0() ?: TextureUV.uv(0.0F, 0.0F, 1.0F, 1.0F))
+                    .uv(it.uv() ?: TextureUV.uv(0.0F, 0.0F, 1.0F, 1.0F))
                     .cullFace(it.cullFace())
                     .rotation(it.rotation())
                     .tintIndex(tintIndex ?: it.tintIndex())
@@ -348,8 +348,9 @@ class ModelRenderer(val schematic: Schematic, val clientResources: ClientResourc
 
             .from(from)
             .to(to)
-            .shade(shade())
-            .rotation(rotation()?.let { ElementRotation.of(rotation().origin()?.multiply(scale)?.add(moveX, moveY, moveZ), rotation().axis(), rotation().angle(), rotation().rescale()) })
+            .shadeDirectionOverride(shadeDirectionOverride())
+            .rotation(rotation()?.let { rotation -> ElementRotation(rotation.origin()?.multiply(scale)?.add(moveX, moveY, moveZ),
+                rotation.rotation, rotation.rescale) })
             .build()
 
     }
