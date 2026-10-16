@@ -19,7 +19,7 @@ repositories {
 dependencies {
     testImplementation(kotlin("test"))
     implementation("eu.cafestube:WetSchematics:2.0.8-SNAPSHOT")
-    implementation("commons-cli:commons-cli:1.9.0")
+    implementation("commons-cli:commons-cli:1.11.0")
 
     implementation("team.unnamed:creative-api:1.15.3")
     implementation("team.unnamed:creative-serializer-minecraft:1.15.3")
