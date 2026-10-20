@@ -22,7 +22,7 @@ dependencies {
     implementation("commons-cli:commons-cli:1.9.0")
 
     implementation("team.unnamed:creative-api:1.15.3")
-    implementation("team.unnamed:creative-serializer-minecraft:1.15.3")
+    implementation("team.unnamed:creative-serializer-minecraft:1.15.4")
     implementation("net.kyori:adventure-nbt:5.2.0")
 }
 
